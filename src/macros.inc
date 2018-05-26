@@ -27,7 +27,7 @@ VRAM_SPRITES_LOC = $C000
         sta     BG1SC
         ldx     #bgnba(VRAM_TILES_LOC, 0, 0, 0)
         stx     BG12NBA
-        lda     #objsel(VRAM_SPRITES_LOC, OBJ_8x8_32x32, 0)
+        lda     #objsel(VRAM_SPRITES_LOC, OBJ_8x8_16x16, 0)
         sta     OBJSEL
         lda     #tm(ON, OFF, OFF, OFF, ON)
         sta     TM
@@ -43,8 +43,8 @@ VRAM_SPRITES_LOC = $C000
 	; load the tile_id into accumulator
 	ldy tile_id
 	; do the update
-        lda     #pos_x
-        ldx     #pos_y
+        lda     #pos_y
+        ldx     #pos_x
         OAM_set shadow_oam, sprite_id, 0, 0, 0, 1, 3
 .endmacro
 
