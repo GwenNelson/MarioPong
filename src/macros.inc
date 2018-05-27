@@ -57,8 +57,8 @@ VRAM_SPRITES_LOC = $C000
 	; load the tile_id into accumulator
 	ldy tile_id
 	; do the update
-        lda     #pos_y
-        ldx     #pos_x
+        lda     pos_y
+        ldx     pos_x
         OAM_set shadow_oam, sprite_id, 0, 0, 0, fix, 3
 .endmacro
 

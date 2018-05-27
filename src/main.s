@@ -24,17 +24,31 @@ Main:
 
 
 loop:
-
 	jmp loop
 
+update_players:
+	lda MARIO_Y
+	inc
+	sta MARIO_Y
+
+	lda LUIGI_Y
+	dec
+	sta LUIGI_Y
+	rts
+
 VBL:
-	sprite_update 00, 10,  40, #MARIO_STANDING, 1
-	sprite_update 01, 230, 40, #LUIGI_STANDING, 1
-	sprite_update 16, 120, 100, #SHELL, 1
+	jsr update_players
+	sprite_update 00, #10,  MARIO_Y, #MARIO_STANDING, 1
+	sprite_update 01, #230, LUIGI_Y, #LUIGI_STANDING, 1
+	sprite_update 16, #120, #100, #SHELL, 1
 
 	render_sprites
 
 	rtl
+
+.segment "ZEROPAGE"
+MARIO_Y: .res 4
+LUIGI_Y: .res 2
 
 .segment "LORAM"
 shadow_oam: .res 512+32
