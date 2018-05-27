@@ -17,7 +17,21 @@ VRAM_SPRITES_LOC = $C000
 .macro load_spriteset spriteset_tiles, spriteset_palette
 	LZ4_decompress spriteset_tiles, EXRAM, y
 	VRAM_memcpy VRAM_SPRITES_LOC, EXRAM, y
-	CGRAM_memcpy 128, spriteset_palette, .ident (.concat ("sizeof_", .string(spriteset_palette)))
+	CGRAM_memcpy 16,   spriteset_palette, .ident (.concat ("sizeof_", .string(spriteset_palette)))
+	CGRAM_memcpy 32,   spriteset_palette, .ident (.concat ("sizeof_", .string(spriteset_palette)))
+	CGRAM_memcpy 48,   spriteset_palette, .ident (.concat ("sizeof_", .string(spriteset_palette)))
+	CGRAM_memcpy 64,   spriteset_palette, .ident (.concat ("sizeof_", .string(spriteset_palette)))
+	CGRAM_memcpy 80,   spriteset_palette, .ident (.concat ("sizeof_", .string(spriteset_palette)))
+	CGRAM_memcpy 96,   spriteset_palette, .ident (.concat ("sizeof_", .string(spriteset_palette)))
+	CGRAM_memcpy 112,   spriteset_palette, .ident (.concat ("sizeof_", .string(spriteset_palette)))
+	CGRAM_memcpy 128,   spriteset_palette, .ident (.concat ("sizeof_", .string(spriteset_palette)))
+	CGRAM_memcpy 144,   spriteset_palette, .ident (.concat ("sizeof_", .string(spriteset_palette)))
+	CGRAM_memcpy 160,   spriteset_palette, .ident (.concat ("sizeof_", .string(spriteset_palette)))
+	CGRAM_memcpy 176,   spriteset_palette, .ident (.concat ("sizeof_", .string(spriteset_palette)))
+	CGRAM_memcpy 192,   spriteset_palette, .ident (.concat ("sizeof_", .string(spriteset_palette)))
+	CGRAM_memcpy 208,   spriteset_palette, .ident (.concat ("sizeof_", .string(spriteset_palette)))
+	CGRAM_memcpy 224,   spriteset_palette, .ident (.concat ("sizeof_", .string(spriteset_palette)))
+	CGRAM_memcpy 240,   spriteset_palette, .ident (.concat ("sizeof_", .string(spriteset_palette)))
 .endmacro
 
 .macro setup_screen
@@ -39,13 +53,13 @@ VRAM_SPRITES_LOC = $C000
 	VBL_on
 .endmacro
 
-.macro sprite_update sprite_id, pos_x, pos_y, tile_id
+.macro sprite_update sprite_id, pos_x, pos_y, tile_id, fix
 	; load the tile_id into accumulator
 	ldy tile_id
 	; do the update
         lda     #pos_y
         ldx     #pos_x
-        OAM_set shadow_oam, sprite_id, 0, 0, 0, 1, 3
+        OAM_set shadow_oam, sprite_id, 0, 0, 0, fix, 3
 .endmacro
 
 .macro render_sprites

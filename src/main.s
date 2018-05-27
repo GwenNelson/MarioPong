@@ -13,7 +13,8 @@ Main:
 	load_bg bg01_map, bg01_tiles, bg01_palette    ; load bg01
 
 	setup_screen
-	OAM_init shadow_oam, 0, 0, 0
+	OAM_init shadow_oam,   0, 0, 0 
+	OAM_init shadow_oam+4, 0, 0, 1
 
 	; set Vblank handler
 	VBL_set VBL
@@ -27,9 +28,9 @@ loop:
 	jmp loop
 
 VBL:
-	sprite_update 00, 10,  40, #MARIO_STANDING
-	sprite_update 01, 230, 40, #LUIGI_STANDING
-	
+	sprite_update 00, 10,  40, #MARIO_STANDING, 1
+	sprite_update 01, 230, 40, #LUIGI_STANDING, 1
+	sprite_update 16, 120, 100, #SHELL, 1
 
 	render_sprites
 
