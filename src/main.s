@@ -48,6 +48,12 @@ display_sprites:
 	rts
 
 Main:
+	; tell controller to latch input
+	lda $4212
+	ora #$01
+	sta $4212
+	
+
 	load_spriteset mario_sprites_tiles, mario_sprites_palette ; load mario_sprites
 	load_bg bg01_map, bg01_tiles, bg01_palette    ; load bg01
 
@@ -214,8 +220,6 @@ update_luigi_anim:
 	bne :+
 	jmp update_luigi_moving_down
 :
-
-
 	rts
 
 update_mario_anim:
@@ -242,8 +246,6 @@ update_mario_anim:
 	bne :+
 	jmp update_mario_moving_down
 :
-
-
 	rts
 
 
@@ -254,9 +256,9 @@ update_mario_moving_up:
 	bne :+
 
 	; if we end up here, we need to switch to moving down state, so let's do so and then return
-	lda MARIO_SPRITES+S_CHAR_SPRITES::STANDING_STILL
+	lda MARIO_SPRITES+S_CHAR_SPRITES::MOVING_DOWN_F1
 	sta MARIO_STATE+S_CHAR_STATE::CUR_SPRITE
-	lda E_CHAR_ANIM_STATE::STANDING_STILL
+	lda E_CHAR_ANIM_STATE::MOVING_DOWN_F1
 	sta MARIO_STATE+S_CHAR_STATE::CUR_STATE
 	rts
 :
@@ -329,25 +331,20 @@ update_mario_still:
 
 
 set_p1_moving_up:
-	lda MARIO_STATE+S_CHAR_STATE::CUR_STATE ; if already in the right state, return
+	lda MARIO_STATE+S_CHAR_STATE::CUR_STATE 
 	cmp E_CHAR_ANIM_STATE::STANDING_STILL
 	beq :+
-	lda MARIO_STATE+S_CHAR_STATE::CUR_STATE 
 	cmp E_CHAR_ANIM_STATE::MOVING_DOWN_F1
 	beq :+
-	lda MARIO_STATE+S_CHAR_STATE::CUR_STATE 
 	cmp E_CHAR_ANIM_STATE::MOVING_DOWN_F2
 	beq :+
-	lda MARIO_STATE+S_CHAR_STATE::CUR_STATE
-	cmp E_CHAR_ANIM_STATE::MOVING_UP_F1
-	bne :+
 	rts
 
-:	;lda MARIO_SPRITES+S_CHAR_SPRITES::MOVING_UP_F1
-	;sta MARIO_STATE+S_CHAR_STATE::CUR_SPRITE
+:	lda MARIO_SPRITES+S_CHAR_SPRITES::MOVING_UP_F1
+	sta MARIO_STATE+S_CHAR_STATE::CUR_SPRITE
 	lda E_CHAR_ANIM_STATE::MOVING_UP_F1
 	sta MARIO_STATE+S_CHAR_STATE::CUR_STATE
-;	jmp update_mario_moving_up
+
 	rts
 
 set_p1_moving_down:
@@ -364,7 +361,6 @@ set_p1_moving_down:
 	sta MARIO_STATE+S_CHAR_STATE::CUR_SPRITE
 	lda E_CHAR_ANIM_STATE::MOVING_DOWN_F1
 	sta MARIO_STATE+S_CHAR_STATE::CUR_STATE
-;	jmp update_luigi_moving_down
 
 	rts
 
