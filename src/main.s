@@ -41,6 +41,12 @@ SHELL_Y_POS: .word 0
 
 .segment "CODE"
 
+display_sprites:
+	sprite_update 00, PLAY_AREA_LEFT,  MARIO_STATE+S_CHAR_STATE::Y_POS, MARIO_STATE+S_CHAR_STATE::CUR_SPRITE, 1
+	sprite_update 01, PLAY_AREA_RIGHT, LUIGI_STATE+S_CHAR_STATE::Y_POS, LUIGI_STATE+S_CHAR_STATE::CUR_SPRITE, 1
+	sprite_update 16, SHELL_X_POS, SHELL_Y_POS, SHELL_SPRITE, 1
+	rts
+
 Main:
 	load_spriteset mario_sprites_tiles, mario_sprites_palette ; load mario_sprites
 	load_bg bg01_map, bg01_tiles, bg01_palette    ; load bg01
@@ -61,7 +67,12 @@ Main:
 
 	screen_on
 
+
+
 loop:
+	jsr update_players
+	jsr update_shell
+;	wai
 	jmp loop
 
 init_shell:
@@ -377,8 +388,7 @@ update_input:
 update_players:
 	jsr update_input
 	jsr update_shell
-	jsr update_luigi_anim
-	jsr update_mario_anim
+
 
 	rts
 
@@ -398,18 +408,12 @@ update_shell:
 	; if it collides with edges of play area, same basic thing
 	; eventually, if it collides with left play area, mario loses a point and likewise for right play area
 	; luigi AI needs to roughly follow the shell too
-	lda SHELL_X_POS
-	dec
-	sta SHELL_X_POS
 	rts
 
 VBL:
-	jsr update_players
-	jsr update_shell
-	sprite_update 00, PLAY_AREA_LEFT,  MARIO_STATE+S_CHAR_STATE::Y_POS, MARIO_STATE+S_CHAR_STATE::CUR_SPRITE, 1
-	sprite_update 01, PLAY_AREA_RIGHT, LUIGI_STATE+S_CHAR_STATE::Y_POS, LUIGI_STATE+S_CHAR_STATE::CUR_SPRITE, 1
-	sprite_update 16, SHELL_X_POS, SHELL_Y_POS, SHELL_SPRITE, 1
-
+	jsr update_luigi_anim
+	jsr update_mario_anim
+	jsr display_sprites
 	render_sprites
 
 	rtl
