@@ -36,6 +36,9 @@
 MARIO_STATE: .tag S_CHAR_STATE
 LUIGI_STATE: .tag S_CHAR_STATE
 
+SHELL_X_POS: .word 0
+SHELL_Y_POS: .word 0
+
 .segment "CODE"
 
 Main:
@@ -50,6 +53,9 @@ Main:
 	; setup player states
 	jsr init_players
 
+	; setup the shell
+	jsr init_shell
+
 	; set Vblank handler
 	VBL_set VBL
 
@@ -57,6 +63,12 @@ Main:
 
 loop:
 	jmp loop
+
+init_shell:
+	lda SHELL_START_XPOS
+	sta SHELL_X_POS
+	lda SHELL_START_YPOS
+	sta SHELL_Y_POS
 
 init_players:
 	; setup initial states of the 2 characters
@@ -363,18 +375,25 @@ update_input:
 	rts
 
 update_players:
-;	jsr update_input
-	jsr update_mario_anim
-	jsr update_luigi_anim
 	jsr update_input
+	jsr update_shell
+	jsr update_luigi_anim
+	jsr update_mario_anim
 
+	rts
+
+update_shell:
+	lda SHELL_X_POS
+	dec
+	sta SHELL_X_POS
 	rts
 
 VBL:
 	jsr update_players
-	sprite_update 00, #10,  MARIO_STATE+S_CHAR_STATE::Y_POS, MARIO_STATE+S_CHAR_STATE::CUR_SPRITE, 1
-	sprite_update 01, #230, LUIGI_STATE+S_CHAR_STATE::Y_POS, LUIGI_STATE+S_CHAR_STATE::CUR_SPRITE, 1
-	sprite_update 16, #120, #100, SHELL_SPRITE, 1
+	jsr update_shell
+	sprite_update 00, PLAY_AREA_LEFT,  MARIO_STATE+S_CHAR_STATE::Y_POS, MARIO_STATE+S_CHAR_STATE::CUR_SPRITE, 1
+	sprite_update 01, PLAY_AREA_RIGHT, LUIGI_STATE+S_CHAR_STATE::Y_POS, LUIGI_STATE+S_CHAR_STATE::CUR_SPRITE, 1
+	sprite_update 16, SHELL_X_POS, SHELL_Y_POS, SHELL_SPRITE, 1
 
 	render_sprites
 
@@ -410,10 +429,15 @@ LUIGI_SPRITES:
 ; top and bottom of play area
 PLAY_AREA_TOP:    .word 30
 PLAY_AREA_BOTTOM: .word 200
+PLAY_AREA_LEFT:   .word 10
+PLAY_AREA_RIGHT:  .word 230
 
-; starting Y coordinate
+; starting character Y coordinate
 CHARACTER_START_YPOS: .word 100
 
+; starting shell coordinates
+SHELL_START_XPOS: .word 120
+SHELL_START_YPOS: .word 100
 
 ; the background image
 incbin bg01_palette, "data/bg01.png.palette"
