@@ -2,6 +2,17 @@ VRAM_MAP_LOC     = $0000
 VRAM_TILES_LOC   = $8000
 VRAM_SPRITES_LOC = $C000
 
+.define JOY_B $80
+.define JOY_Y $40
+.define JOY_SELECT $20
+.define JOY_START $10
+.define JOY_UP $8
+.define JOY_DOWN $4
+.define JOY_LEFT $2
+.define JOY_RIGHT $1
+
+.define P1_JOY $4219
+
 .include "OAM.i"
 
 .macro load_bg bg_map, bg_tiles, bg_palette

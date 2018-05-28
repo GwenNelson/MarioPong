@@ -45,7 +45,7 @@ Main:
 	setup_screen
 	; stupid voodoo hack
 	OAM_init shadow_oam,   0, 0, 0 
-;	OAM_init shadow_oam+4, 0, 0, 1
+	OAM_init shadow_oam+4, 0, 0, 1
 
 	; setup player states
 	jsr init_players
@@ -167,7 +167,7 @@ update_luigi_still:
 
 	rts
 
-update_luigi:
+update_luigi_anim:
 	; first we check the current state and jump to the correct routine
 	lda LUIGI_STATE+S_CHAR_STATE::CUR_STATE
 
@@ -195,15 +195,186 @@ update_luigi:
 
 	rts
 
+update_mario_anim:
+	; first we check the current state and jump to the correct routine
+	lda MARIO_STATE+S_CHAR_STATE::CUR_STATE
+
+	cmp E_CHAR_ANIM_STATE::STANDING_STILL
+	bne :+
+	jmp update_mario_still
+:
+
+	cmp E_CHAR_ANIM_STATE::MOVING_UP_F1
+	bne :+
+	jmp update_mario_moving_up
+:	cmp E_CHAR_ANIM_STATE::MOVING_UP_F2
+	bne :+
+	jmp update_mario_moving_up
+:
+
+	cmp E_CHAR_ANIM_STATE::MOVING_DOWN_F1
+	bne :+
+	jmp update_mario_moving_down
+:	cmp E_CHAR_ANIM_STATE::MOVING_DOWN_F2
+	bne :+
+	jmp update_mario_moving_down
+:
+
+
+	rts
+
+
+update_mario_moving_up:
+	; first check if we're too close to the top
+	lda MARIO_STATE+S_CHAR_STATE::Y_POS
+	cmp PLAY_AREA_TOP
+	bne :+
+
+	; if we end up here, we need to switch to moving down state, so let's do so and then return
+	lda MARIO_SPRITES+S_CHAR_SPRITES::STANDING_STILL
+	sta MARIO_STATE+S_CHAR_STATE::CUR_SPRITE
+	lda E_CHAR_ANIM_STATE::STANDING_STILL
+	sta MARIO_STATE+S_CHAR_STATE::CUR_STATE
+	rts
+:
+	; otherwise, move up 1 pixel and then flip the frame
+	; move up 1 pixel first
+	lda MARIO_STATE+S_CHAR_STATE::Y_POS
+	dec
+	sta MARIO_STATE+S_CHAR_STATE::Y_POS
+
+	; now the frame flip
+	lda E_CHAR_ANIM_STATE::MOVING_UP_F1
+	cmp MARIO_STATE+S_CHAR_STATE::CUR_STATE
+	bne :+
+
+	; if we end up here, we need to flip to the F2 frame
+	lda E_CHAR_ANIM_STATE::MOVING_UP_F2
+	sta MARIO_STATE+S_CHAR_STATE::CUR_STATE
+	lda MARIO_SPRITES+S_CHAR_SPRITES::MOVING_UP_F2
+	sta MARIO_STATE+S_CHAR_STATE::CUR_SPRITE
+	rts
+
+:	; if we end up here, we need to flip to the F1 frame
+	lda E_CHAR_ANIM_STATE::MOVING_UP_F1
+	sta MARIO_STATE+S_CHAR_STATE::CUR_STATE
+	lda MARIO_SPRITES+S_CHAR_SPRITES::MOVING_UP_F1
+	sta MARIO_STATE+S_CHAR_STATE::CUR_SPRITE
+	rts
+
+update_mario_moving_down:
+	; first check if we're too close to the top
+	lda MARIO_STATE+S_CHAR_STATE::Y_POS
+	cmp PLAY_AREA_BOTTOM
+	bne :+
+
+	; if we end up here, we need to switch to moving up state, so let's do so and then return
+	lda MARIO_SPRITES+S_CHAR_SPRITES::MOVING_UP_F1
+	sta MARIO_STATE+S_CHAR_STATE::CUR_SPRITE
+	lda E_CHAR_ANIM_STATE::MOVING_UP_F1
+	sta MARIO_STATE+S_CHAR_STATE::CUR_STATE
+	rts
+:
+	; otherwise, move up 1 pixel and then flip the frame
+	; move up 1 pixel first
+	lda MARIO_STATE+S_CHAR_STATE::Y_POS
+	inc
+	sta MARIO_STATE+S_CHAR_STATE::Y_POS
+
+	; now the frame flip
+	lda E_CHAR_ANIM_STATE::MOVING_DOWN_F1
+	cmp MARIO_STATE+S_CHAR_STATE::CUR_STATE
+	bne :+
+
+	; if we end up here, we need to flip to the F2 frame
+	lda E_CHAR_ANIM_STATE::MOVING_DOWN_F2
+	sta MARIO_STATE+S_CHAR_STATE::CUR_STATE
+	lda MARIO_SPRITES+S_CHAR_SPRITES::MOVING_DOWN_F2
+	sta MARIO_STATE+S_CHAR_STATE::CUR_SPRITE
+	rts
+
+:	; if we end up here, we need to flip to the F1 frame
+	lda E_CHAR_ANIM_STATE::MOVING_DOWN_F1
+	sta MARIO_STATE+S_CHAR_STATE::CUR_STATE
+	lda MARIO_SPRITES+S_CHAR_SPRITES::MOVING_DOWN_F1
+	sta MARIO_STATE+S_CHAR_STATE::CUR_SPRITE
+	rts
+
+
+update_mario_still:
+	rts
+
+
+set_p1_moving_up:
+	lda MARIO_STATE+S_CHAR_STATE::CUR_STATE ; if already in the right state, return
+	cmp E_CHAR_ANIM_STATE::STANDING_STILL
+	beq :+
+	lda MARIO_STATE+S_CHAR_STATE::CUR_STATE 
+	cmp E_CHAR_ANIM_STATE::MOVING_DOWN_F1
+	beq :+
+	lda MARIO_STATE+S_CHAR_STATE::CUR_STATE 
+	cmp E_CHAR_ANIM_STATE::MOVING_DOWN_F2
+	beq :+
+	lda MARIO_STATE+S_CHAR_STATE::CUR_STATE
+	cmp E_CHAR_ANIM_STATE::MOVING_UP_F1
+	bne :+
+	rts
+
+:	;lda MARIO_SPRITES+S_CHAR_SPRITES::MOVING_UP_F1
+	;sta MARIO_STATE+S_CHAR_STATE::CUR_SPRITE
+	lda E_CHAR_ANIM_STATE::MOVING_UP_F1
+	sta MARIO_STATE+S_CHAR_STATE::CUR_STATE
+;	jmp update_mario_moving_up
+	rts
+
+set_p1_moving_down:
+	lda MARIO_STATE+S_CHAR_STATE::CUR_STATE 
+	cmp E_CHAR_ANIM_STATE::STANDING_STILL
+	beq :+
+	cmp E_CHAR_ANIM_STATE::MOVING_UP_F1
+	beq :+
+	cmp E_CHAR_ANIM_STATE::MOVING_UP_F2
+	beq :+
+	rts
+
+:	lda MARIO_SPRITES+S_CHAR_SPRITES::MOVING_DOWN_F1
+	sta MARIO_STATE+S_CHAR_STATE::CUR_SPRITE
+	lda E_CHAR_ANIM_STATE::MOVING_DOWN_F1
+	sta MARIO_STATE+S_CHAR_STATE::CUR_STATE
+;	jmp update_luigi_moving_down
+
+	rts
+
+set_p1_still:
+	lda MARIO_SPRITES+S_CHAR_SPRITES::STANDING_STILL
+	sta MARIO_STATE+S_CHAR_STATE::CUR_SPRITE
+	lda E_CHAR_ANIM_STATE::STANDING_STILL
+	sta MARIO_STATE+S_CHAR_STATE::CUR_STATE
+	rts
+
+update_input:
+	lda P1_JOY
+	bit #JOY_DOWN
+	bne set_p1_moving_down
+	lda P1_JOY
+	bit #JOY_UP
+	bne set_p1_moving_up
+	beq set_p1_still
+	rts
+
 update_players:
-	jsr update_luigi
+;	jsr update_input
+	jsr update_mario_anim
+	jsr update_luigi_anim
+	jsr update_input
+
 	rts
 
 VBL:
 	jsr update_players
 	sprite_update 00, #10,  MARIO_STATE+S_CHAR_STATE::Y_POS, MARIO_STATE+S_CHAR_STATE::CUR_SPRITE, 1
 	sprite_update 01, #230, LUIGI_STATE+S_CHAR_STATE::Y_POS, LUIGI_STATE+S_CHAR_STATE::CUR_SPRITE, 1
-;	sprite_update 16, #120, #100, #SHELL, 1
+	sprite_update 16, #120, #100, SHELL_SPRITE, 1
 
 	render_sprites
 
@@ -216,12 +387,15 @@ shadow_oam: .res 512+32
 
 .segment "RODATA"
 ; sprite tile ID data, see definition of S_CHAR_SPRITES struct above
+SHELL_SPRITE:
+	.word 40
+
 MARIO_SPRITES:
 	.word 38 ; STANDING_STILL
 	.word 34 ; MOVING_UP_F1
 	.word 14 ; MOVING_UP_F2
 	.word 12 ; MOVING_DOWN_F1
-	.word 31 ; MOVING_DOWN_F2
+	.word 32 ; MOVING_DOWN_F2
 	.word 36 ; KICKING_SHELL
 
 LUIGI_SPRITES:
