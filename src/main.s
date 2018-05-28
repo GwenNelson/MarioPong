@@ -383,6 +383,21 @@ update_players:
 	rts
 
 update_shell:
+	; rough sketch of how this should work
+	; shell has LEFT or RIGHT states for moving left and right
+	; shell has UP, DOWN or NEUTRAL states for moving up and down
+	; at start of game, shell starts moving (LEFT,NEUTRAL)
+	; if it collides with mario:
+	;	shell starts moving right
+	;	if mario was moving down, shell starts moving down
+	; 	if mario was moving up, shell starts moving up
+	; if it collides with luigi:
+	;	shell starts moving left
+	;	if luigi was moving down, shell starts moving down
+	;	if luigi was moving up, shell starts moving up
+	; if it collides with edges of play area, same basic thing
+	; eventually, if it collides with left play area, mario loses a point and likewise for right play area
+	; luigi AI needs to roughly follow the shell too
 	lda SHELL_X_POS
 	dec
 	sta SHELL_X_POS
