@@ -14,6 +14,20 @@
 	KICKING_SHELL  ; kicking the shell
 .endenum
 
+; shell left/right movement state
+.enum E_SHELL_STATE_LR
+	LEFT
+	RIGHT
+	NEUTRAL
+.endenum
+
+; shell up/down movement state
+.enum E_SHELL_STATE_UD
+	UP
+	DOWN
+	NEUTRAL
+.endenum
+
 .struct S_CHAR_SPRITES
 	STANDING_STILL .word
 	MOVING_UP_F1   .word
@@ -38,6 +52,9 @@ LUIGI_STATE: .tag S_CHAR_STATE
 
 SHELL_X_POS: .word 0
 SHELL_Y_POS: .word 0
+
+SHELL_LR_STATE: .word 0
+SHELL_UD_STATE: .word 0
 
 .segment "CODE"
 
@@ -78,14 +95,22 @@ Main:
 loop:
 	jsr update_players
 	jsr update_shell
-;	wai
+	wai
 	jmp loop
 
 init_shell:
+	; setup initial coordinates of shell
 	lda SHELL_START_XPOS
 	sta SHELL_X_POS
 	lda SHELL_START_YPOS
 	sta SHELL_Y_POS
+
+	; setup initial state of shell
+	lda E_SHELL_STATE_LR::NEUTRAL
+	sta SHELL_LR_STATE
+	lda E_SHELL_STATE_UD::NEUTRAL
+	sta SHELL_UD_STATE
+	rts
 
 init_players:
 	; setup initial states of the 2 characters
@@ -388,7 +413,159 @@ update_players:
 
 	rts
 
+check_mario_collide:
+	; this routine should only be called once we're actually at the left of the play area
+	; essentially, if the difference between SHELL_Y_POS and mario's Y pos is <16 then we had a collision
+
+
+	; if no collision, just set the shell's L/R state to right and return
+	; if collided, we set mario's state to kicking and shell's L/R state to R
+	; after that, we figure out if SHELL_Y_POS is above or below mario's Y pos
+	; if above:
+	;	set shell's U/D state to up
+	; if below:
+	; 	set shell's U/D state to down
+	; if same:
+	;	set shell's U/D state to neutral
+	;	
+	rts
+
+update_shell_left:
+	; let's first check if we're at the left wall
+	lda SHELL_X_POS
+	cmp PLAY_AREA_LEFT
+	bne :+
+	; if so, we need to check for collisions with mario
+
+	jmp check_mario_collide
+
+	; we should now switch to moving right
+;	lda E_SHELL_STATE_LR::RIGHT
+;	sta SHELL_LR_STATE
+;	rts ; and then return
+
+:	; if we get here, we actually move left
+	lda SHELL_X_POS
+	dec
+	sta SHELL_X_POS
+	rts
+
+update_shell_right:
+	; let's first check if we're at the left wall
+	lda SHELL_X_POS
+	cmp PLAY_AREA_RIGHT
+	bne :+
+
+	; TODO - check for collisions with luigi
+
+
+	; we should now switch to moving left
+	lda E_SHELL_STATE_LR::LEFT
+	sta SHELL_LR_STATE
+	rts
+
+:	; if we get here, move right
+	lda SHELL_X_POS
+	inc
+	sta SHELL_X_POS
+	rts
+
+update_shell_neutral:
+	; we should only be here at the start of the game
+	; basically, we just wait for player 1 to move, and then we use their state (if they're moving up, we're going L/U, otherwise L/D)
+
+	; first, check if they're moving up
+	lda MARIO_STATE+S_CHAR_STATE::CUR_STATE 
+	cmp E_CHAR_ANIM_STATE::MOVING_UP_F1
+	bne :+
+	cmp E_CHAR_ANIM_STATE::MOVING_UP_F2
+	bne :+
+	; if we get here, player 1 is moving up, so let's switch to U/L
+	lda E_SHELL_STATE_LR::LEFT
+	sta SHELL_LR_STATE
+	lda E_SHELL_STATE_UD::UP
+	sta SHELL_UD_STATE
+	rts ; and then return
+
+:	; if we get here, player 1 is not moving up, let's check if they're moving down
+	lda MARIO_STATE+S_CHAR_STATE::CUR_STATE 
+	cmp E_CHAR_ANIM_STATE::MOVING_DOWN_F1
+	bne :+
+	cmp E_CHAR_ANIM_STATE::MOVING_DOWN_F2
+	bne :+
+	; and if we get here, we want to be going D/L
+	lda E_SHELL_STATE_LR::LEFT
+	sta SHELL_LR_STATE
+	lda E_SHELL_STATE_UD::DOWN
+	sta SHELL_UD_STATE
+	rts
+
+	; if the player is not in any appropriate state, we just return
+:	rts
+
+update_shell_lr:
+	lda SHELL_LR_STATE
+	cmp E_SHELL_STATE_LR::LEFT
+	bne :+
+	jmp update_shell_left
+
+:	cmp E_SHELL_STATE_LR::RIGHT
+	bne :+
+	jmp update_shell_right
+
+:
+	jmp update_shell_neutral ; we only need an update for neutral on the L/R state, not U/D state below
+	rts
+
+update_shell_up:
+	; let's first check if we're at the top
+	lda SHELL_Y_POS
+	cmp PLAY_AREA_TOP
+	bne :+
+
+	; if we get here, we're at the top, we should swap to moving down
+	lda E_SHELL_STATE_UD::UP
+	sta SHELL_UD_STATE
+	rts
+
+:	; if we get here, move up
+	lda SHELL_Y_POS
+	dec
+	sta SHELL_Y_POS
+	rts
+
+update_shell_down:
+	lda SHELL_Y_POS
+	cmp PLAY_AREA_BOTTOM
+	bne :+
+
+	lda E_SHELL_STATE_UD::DOWN
+	sta SHELL_UD_STATE
+	rts
+
+:	; if we get here, move down
+	lda SHELL_Y_POS
+	inc
+	sta SHELL_Y_POS
+	rts
+
+update_shell_ud:
+	lda SHELL_UD_STATE
+	cmp E_SHELL_STATE_UD::UP
+	bne :+
+	jmp update_shell_up
+
+:	cmp E_SHELL_STATE_UD::DOWN
+	bne :+
+	jmp update_shell_down
+
+:	rts
+
 update_shell:
+	jsr update_shell_lr
+	jsr update_shell_ud
+	rts
+
 	; rough sketch of how this should work
 	; shell has LEFT or RIGHT states for moving left and right
 	; shell has UP, DOWN or NEUTRAL states for moving up and down
