@@ -56,7 +56,8 @@ SHELL_Y_POS: .word 0
 SHELL_LR_STATE: .word 0
 SHELL_UD_STATE: .word 0
 
-MARIO_SCORE: .word 0
+MARIO_SCORE:  .word 0
+SCORE_SPRITE: .word 0
 
 .segment "CODE"
 
@@ -64,6 +65,7 @@ display_sprites:
 	sprite_update 00, PLAY_AREA_LEFT,  MARIO_STATE+S_CHAR_STATE::Y_POS, MARIO_STATE+S_CHAR_STATE::CUR_SPRITE, 1
 	sprite_update 01, PLAY_AREA_RIGHT, LUIGI_STATE+S_CHAR_STATE::Y_POS, LUIGI_STATE+S_CHAR_STATE::CUR_SPRITE, 1
 	sprite_update 16, SHELL_X_POS, SHELL_Y_POS, SHELL_SPRITE, 1
+	sprite_update 04, SCORE_X,SCORE_Y,SCORE_SPRITE,1
 	rts
 
 Main:
@@ -88,6 +90,9 @@ Main:
 	lda #0
 	sta MARIO_SCORE
 
+	lda SCORE_SPRITE_START
+	sta SCORE_SPRITE
+
 	; setup the shell
 	jsr init_shell
 
@@ -104,7 +109,9 @@ loop:
 	jsr update_players
 	jsr update_shell
 
+	.repeat 3
 	wai
+	.endrep
 	jmp loop
 
 init_shell:
@@ -379,6 +386,7 @@ set_mario_down:
 	sta MARIO_STATE+S_CHAR_STATE::CUR_SPRITE
 	lda E_CHAR_ANIM_STATE::MOVING_DOWN_F1
 	sta MARIO_STATE+S_CHAR_STATE::CUR_STATE
+
 :	rts
 
 
@@ -443,6 +451,7 @@ set_mario_kicking:
 	sta MARIO_STATE+S_CHAR_STATE::CUR_SPRITE
 	lda E_CHAR_ANIM_STATE::KICKING_SHELL
 	sta MARIO_STATE+S_CHAR_STATE::CUR_STATE
+
 	; make sure the kick frame is actually shown
 	.repeat 30
 		wai
@@ -476,6 +485,14 @@ set_shell_ud_down:
 	sta SHELL_UD_STATE
 	rts
 
+score_point_mario:
+	inc MARIO_SCORE
+	lda SCORE_SPRITE_START
+	adc MARIO_SCORE
+	adc MARIO_SCORE
+	sta SCORE_SPRITE
+	rts
+
 check_mario_collide:
 	; this routine should only be called once we're actually at the left of the play area
 	; essentially, if the difference between SHELL_Y_POS and mario's Y pos is <16 then we had a collision
@@ -483,7 +500,6 @@ check_mario_collide:
 	; check how close to the left of the screen
 	lda SHELL_X_POS
 	cmp #32
-	bcs :++
 
 	bcs :++ ; if it's >= 32 away, skip to the rts instruction below
 
@@ -498,6 +514,9 @@ check_mario_collide:
 	bcs :+
 ; if we get here, it's <= 16, so we set mario's state to kicking first
 	jsr set_mario_kicking
+
+	; let's also score a point for mario
+	jsr score_point_mario
 
 	; let's also set the L/R state here
 	lda E_SHELL_STATE_LR::RIGHT
@@ -688,6 +707,9 @@ shadow_oam: .res 512+32
 SHELL_SPRITE:
 	.word 40
 
+SCORE_SPRITE_START:
+	.word 64
+
 MARIO_SPRITES:
 	.word 38 ; STANDING_STILL
 	.word 34 ; MOVING_UP_F1
@@ -704,6 +726,8 @@ LUIGI_SPRITES:
 	.word 04 ; MOVING_DOWN_F2
 	.word 10 ; KICKING_SHELL
 
+SCORE_X: .word 10
+SCORE_Y: .word 30
 
 ; top and bottom of play area
 PLAY_AREA_TOP:    .word 30
