@@ -56,11 +56,7 @@ SHELL_Y_POS: .word 0
 SHELL_LR_STATE: .word 0
 SHELL_UD_STATE: .word 0
 
-; simulated GPRs - all 6502 projects should do this
-GPR0: .word 0
-GPR1: .word 1
-GPR2: .word 2
-GPR3: .word 3
+MARIO_SCORE: .word 0
 
 .segment "CODE"
 
@@ -87,6 +83,10 @@ Main:
 
 	; setup player states
 	jsr init_players
+
+	; start with score of 0, obviously
+	lda #0
+	sta MARIO_SCORE
 
 	; setup the shell
 	jsr init_shell
@@ -444,7 +444,7 @@ set_mario_kicking:
 	lda E_CHAR_ANIM_STATE::KICKING_SHELL
 	sta MARIO_STATE+S_CHAR_STATE::CUR_STATE
 	; make sure the kick frame is actually shown
-	.repeat 10
+	.repeat 30
 		wai
 	.endrep
 	rts
@@ -456,7 +456,7 @@ set_luigi_kicking:
 	lda E_CHAR_ANIM_STATE::KICKING_SHELL
 	sta LUIGI_STATE+S_CHAR_STATE::CUR_STATE
 	; make sure the kick frame is actually shown
-	.repeat 10
+	.repeat 30
 		wai
 	.endrep
 	rts
