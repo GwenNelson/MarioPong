@@ -99,10 +99,11 @@ Main:
 
 
 loop:
-	jsr update_players
-	jsr update_shell
 	jsr update_luigi_anim
 	jsr update_mario_anim
+	jsr update_players
+	jsr update_shell
+
 	wai
 	jmp loop
 
@@ -159,7 +160,7 @@ update_luigi_moving_up:
 	; otherwise, move up 1 pixel and then flip the frame
 	; move up 1 pixel first
 	lda LUIGI_STATE+S_CHAR_STATE::Y_POS
-	dec
+	sbc #2
 	sta LUIGI_STATE+S_CHAR_STATE::Y_POS
 
 	; now the frame flip
@@ -197,7 +198,7 @@ update_luigi_moving_down:
 	; otherwise, move up 1 pixel and then flip the frame
 	; move up 1 pixel first
 	lda LUIGI_STATE+S_CHAR_STATE::Y_POS
-	inc
+	adc #2
 	sta LUIGI_STATE+S_CHAR_STATE::Y_POS
 
 	; now the frame flip
@@ -274,6 +275,7 @@ update_mario_anim:
 	jmp update_mario_moving_up
 :	cmp E_CHAR_ANIM_STATE::MOVING_UP_F2
 	bne :+
+	rts
 	jmp update_mario_moving_up
 :
 
@@ -303,26 +305,8 @@ update_mario_moving_up:
 	; otherwise, move up 1 pixel and then flip the frame
 	; move up 1 pixel first
 	lda MARIO_STATE+S_CHAR_STATE::Y_POS
-	dec
+	sbc #4
 	sta MARIO_STATE+S_CHAR_STATE::Y_POS
-
-	; now the frame flip
-	lda E_CHAR_ANIM_STATE::MOVING_UP_F1
-	cmp MARIO_STATE+S_CHAR_STATE::CUR_STATE
-	bne :+
-
-	; if we end up here, we need to flip to the F2 frame
-	lda E_CHAR_ANIM_STATE::MOVING_UP_F2
-	sta MARIO_STATE+S_CHAR_STATE::CUR_STATE
-	lda MARIO_SPRITES+S_CHAR_SPRITES::MOVING_UP_F2
-	sta MARIO_STATE+S_CHAR_STATE::CUR_SPRITE
-	rts
-
-:	; if we end up here, we need to flip to the F1 frame
-	lda E_CHAR_ANIM_STATE::MOVING_UP_F1
-	sta MARIO_STATE+S_CHAR_STATE::CUR_STATE
-	lda MARIO_SPRITES+S_CHAR_SPRITES::MOVING_UP_F1
-	sta MARIO_STATE+S_CHAR_STATE::CUR_SPRITE
 	rts
 
 update_mario_moving_down:
@@ -341,7 +325,7 @@ update_mario_moving_down:
 	; otherwise, move up 1 pixel and then flip the frame
 	; move up 1 pixel first
 	lda MARIO_STATE+S_CHAR_STATE::Y_POS
-	inc
+	adc #4
 	sta MARIO_STATE+S_CHAR_STATE::Y_POS
 
 	; now the frame flip
@@ -373,11 +357,18 @@ set_mario_up:
 	cmp E_CHAR_ANIM_STATE::MOVING_UP_F2
 	beq :+
 
-	lda MARIO_SPRITES+S_CHAR_SPRITES::MOVING_UP_F1
+	lda MARIO_SPRITES+S_CHAR_SPRITES::MOVING_UP_F2
+	sta MARIO_STATE+S_CHAR_STATE::CUR_SPRITE
+	lda E_CHAR_ANIM_STATE::MOVING_UP_F2
+	sta MARIO_STATE+S_CHAR_STATE::CUR_STATE
+	rts
+
+:	lda MARIO_SPRITES+S_CHAR_SPRITES::MOVING_UP_F1
 	sta MARIO_STATE+S_CHAR_STATE::CUR_SPRITE
 	lda E_CHAR_ANIM_STATE::MOVING_UP_F1
 	sta MARIO_STATE+S_CHAR_STATE::CUR_STATE
-:	rts
+
+	rts
 
 set_mario_down:
 	lda MARIO_STATE+S_CHAR_STATE::CUR_STATE
@@ -400,13 +391,14 @@ set_p1_still:
 
 update_input:
 	lda P1_JOY
+	lda P1_JOY
 	bit #JOY_UP
 	bne set_mario_up
 	lda P1_JOY
 	lda P1_JOY
 	bit #JOY_DOWN
 	bne set_mario_down
-;	jsr set_p1_still
+	jsr set_p1_still
 	rts
 
 set_luigi_up:
@@ -451,6 +443,22 @@ set_mario_kicking:
 	sta MARIO_STATE+S_CHAR_STATE::CUR_SPRITE
 	lda E_CHAR_ANIM_STATE::KICKING_SHELL
 	sta MARIO_STATE+S_CHAR_STATE::CUR_STATE
+	; make sure the kick frame is actually shown
+	.repeat 10
+		wai
+	.endrep
+	rts
+
+set_luigi_kicking:
+
+	lda LUIGI_SPRITES+S_CHAR_SPRITES::KICKING_SHELL
+	sta LUIGI_STATE+S_CHAR_STATE::CUR_SPRITE
+	lda E_CHAR_ANIM_STATE::KICKING_SHELL
+	sta LUIGI_STATE+S_CHAR_STATE::CUR_STATE
+	; make sure the kick frame is actually shown
+	.repeat 10
+		wai
+	.endrep
 	rts
 
 set_shell_ud_neutral:
@@ -472,14 +480,22 @@ check_mario_collide:
 	; this routine should only be called once we're actually at the left of the play area
 	; essentially, if the difference between SHELL_Y_POS and mario's Y pos is <16 then we had a collision
 
+	; check how close to the left of the screen
+	lda SHELL_X_POS
+	cmp #32
+	bcs :++
+
+	bcs :++ ; if it's >= 32 away, skip to the rts instruction below
+
 	; first, calculate diff between SHELL_Y_POS and mario's Y pos
 	lda SHELL_Y_POS
 	clc
 	sbc MARIO_STATE+S_CHAR_STATE::Y_POS
+	clc
 
 	; now compare the diff to see if it's <= 16
-	cmp #16
-	bne :+
+	cmp #32
+	bcs :+
 ; if we get here, it's <= 16, so we set mario's state to kicking first
 	jsr set_mario_kicking
 
@@ -497,44 +513,68 @@ check_mario_collide:
 
 
 
-:	; TODO if we get here reset position, give luigi a point
+:	; TODO if we get here, update score for luigi or whatever
 
 	lda E_SHELL_STATE_LR::RIGHT
 	sta SHELL_LR_STATE
 
+:	rts
+
+check_luigi_collide:
+
+	; check how close to the right of the screen
+	lda SHELL_X_POS
+	clc
+	sbc PLAY_AREA_RIGHT
+	clc
+	cmp #32
+	bcs :++
+
+	lda SHELL_Y_POS
+	clc
+	sbc LUIGI_STATE+S_CHAR_STATE::Y_POS
+	clc
+
+	cmp #24
+	bcs :+
+
+	jsr set_luigi_kicking
+
+	; let's also set the L/R state here
+	lda E_SHELL_STATE_LR::LEFT
+	sta SHELL_LR_STATE
 	rts
 
+	; now we need to check if it's above or below luigi
+	lda SHELL_Y_POS
+	cmp LUIGI_STATE+S_CHAR_STATE::Y_POS
+	beq set_shell_ud_neutral ; set the shell's U/D to neutral
+	bcc set_shell_ud_up      ; set the shell's U/D to up
+	bcs set_shell_ud_down	 ; set the shell's U/D to down
+
+
+
+:	; TODO if we get here, update score for luigi or whatever
+
+	lda E_SHELL_STATE_LR::LEFT
+	sta SHELL_LR_STATE
+
+:	rts
+
 update_shell_left:
-	; let's first check if we're at the left wall
-	lda SHELL_X_POS
-	cmp PLAY_AREA_LEFT
-	bne :+
-	; if so, we need to check for collisions with mario
+	; check for mario collisions
+	jsr check_mario_collide
 
-	jmp check_mario_collide
-
-
-:	; if we get here, we actually move left
+	; move left
 	lda SHELL_X_POS
 	dec
 	sta SHELL_X_POS
 	rts
 
 update_shell_right:
-	; let's first check if we're at the left wall
-	lda SHELL_X_POS
-	cmp PLAY_AREA_RIGHT
-	bne :+
+	jsr check_luigi_collide
 
-	; TODO - check for collisions with luigi
-
-
-	; we should now switch to moving left
-	lda E_SHELL_STATE_LR::LEFT
-	sta SHELL_LR_STATE
-	rts
-
-:	; if we get here, move right
+	; move right
 	lda SHELL_X_POS
 	inc
 	sta SHELL_X_POS
