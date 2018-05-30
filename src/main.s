@@ -56,6 +56,12 @@ SHELL_Y_POS: .word 0
 SHELL_LR_STATE: .word 0
 SHELL_UD_STATE: .word 0
 
+; simulated GPRs - all 6502 projects should do this
+GPR0: .word 0
+GPR1: .word 1
+GPR2: .word 2
+GPR3: .word 3
+
 .segment "CODE"
 
 display_sprites:
@@ -95,6 +101,8 @@ Main:
 loop:
 	jsr update_players
 	jsr update_shell
+	jsr update_luigi_anim
+	jsr update_mario_anim
 	wai
 	jmp loop
 
@@ -256,6 +264,11 @@ update_mario_anim:
 	jmp update_mario_still
 :
 
+	cmp E_CHAR_ANIM_STATE::KICKING_SHELL
+	bne :+
+	jmp update_mario_still
+:
+
 	cmp E_CHAR_ANIM_STATE::MOVING_UP_F1
 	bne :+
 	jmp update_mario_moving_up
@@ -313,7 +326,7 @@ update_mario_moving_up:
 	rts
 
 update_mario_moving_down:
-	; first check if we're too close to the top
+	; first check if we're too close to the bottom
 	lda MARIO_STATE+S_CHAR_STATE::Y_POS
 	cmp PLAY_AREA_BOTTOM
 	bne :+
@@ -355,39 +368,28 @@ update_mario_still:
 	rts
 
 
-set_p1_moving_up:
-	lda MARIO_STATE+S_CHAR_STATE::CUR_STATE 
-	cmp E_CHAR_ANIM_STATE::STANDING_STILL
+set_mario_up:
+	lda MARIO_STATE+S_CHAR_STATE::CUR_STATE
+	cmp E_CHAR_ANIM_STATE::MOVING_UP_F2
 	beq :+
-	cmp E_CHAR_ANIM_STATE::MOVING_DOWN_F1
-	beq :+
-	cmp E_CHAR_ANIM_STATE::MOVING_DOWN_F2
-	beq :+
-	rts
 
-:	lda MARIO_SPRITES+S_CHAR_SPRITES::MOVING_UP_F1
+	lda MARIO_SPRITES+S_CHAR_SPRITES::MOVING_UP_F1
 	sta MARIO_STATE+S_CHAR_STATE::CUR_SPRITE
 	lda E_CHAR_ANIM_STATE::MOVING_UP_F1
 	sta MARIO_STATE+S_CHAR_STATE::CUR_STATE
+:	rts
 
-	rts
+set_mario_down:
+	lda MARIO_STATE+S_CHAR_STATE::CUR_STATE
+	cmp E_CHAR_ANIM_STATE::MOVING_DOWN_F2
+	beq :+
 
-set_p1_moving_down:
-	lda MARIO_STATE+S_CHAR_STATE::CUR_STATE 
-	cmp E_CHAR_ANIM_STATE::STANDING_STILL
-	beq :+
-	cmp E_CHAR_ANIM_STATE::MOVING_UP_F1
-	beq :+
-	cmp E_CHAR_ANIM_STATE::MOVING_UP_F2
-	beq :+
-	rts
-
-:	lda MARIO_SPRITES+S_CHAR_SPRITES::MOVING_DOWN_F1
+	lda MARIO_SPRITES+S_CHAR_SPRITES::MOVING_DOWN_F1
 	sta MARIO_STATE+S_CHAR_STATE::CUR_SPRITE
 	lda E_CHAR_ANIM_STATE::MOVING_DOWN_F1
 	sta MARIO_STATE+S_CHAR_STATE::CUR_STATE
+:	rts
 
-	rts
 
 set_p1_still:
 	lda MARIO_SPRITES+S_CHAR_SPRITES::STANDING_STILL
@@ -398,36 +400,108 @@ set_p1_still:
 
 update_input:
 	lda P1_JOY
-	bit #JOY_DOWN
-	bne set_p1_moving_down
-	lda P1_JOY
 	bit #JOY_UP
-	bne set_p1_moving_up
-	beq set_p1_still
+	bne set_mario_up
+	lda P1_JOY
+	lda P1_JOY
+	bit #JOY_DOWN
+	bne set_mario_down
+;	jsr set_p1_still
 	rts
+
+set_luigi_up:
+	lda LUIGI_STATE+S_CHAR_STATE::CUR_STATE
+	cmp E_CHAR_ANIM_STATE::MOVING_UP_F2
+	beq :+
+
+	lda LUIGI_SPRITES+S_CHAR_SPRITES::MOVING_UP_F1
+	sta LUIGI_STATE+S_CHAR_STATE::CUR_SPRITE
+	lda E_CHAR_ANIM_STATE::MOVING_UP_F1
+	sta LUIGI_STATE+S_CHAR_STATE::CUR_STATE
+:	rts
+
+set_luigi_down:
+	lda LUIGI_STATE+S_CHAR_STATE::CUR_STATE
+	cmp E_CHAR_ANIM_STATE::MOVING_DOWN_F2
+	beq :+
+
+	lda LUIGI_SPRITES+S_CHAR_SPRITES::MOVING_DOWN_F1
+	sta LUIGI_STATE+S_CHAR_STATE::CUR_SPRITE
+	lda E_CHAR_ANIM_STATE::MOVING_DOWN_F1
+	sta LUIGI_STATE+S_CHAR_STATE::CUR_STATE
+	rts
+
+update_luigi_ai:
+	lda SHELL_Y_POS
+	cmp LUIGI_STATE+S_CHAR_STATE::Y_POS
+	beq :+
+	bcc set_luigi_up
+	bcs set_luigi_down
+:	rts
 
 update_players:
 	jsr update_input
 	jsr update_shell
+	jsr update_luigi_ai
+	rts
 
+set_mario_kicking:
 
+	lda MARIO_SPRITES+S_CHAR_SPRITES::KICKING_SHELL
+	sta MARIO_STATE+S_CHAR_STATE::CUR_SPRITE
+	lda E_CHAR_ANIM_STATE::KICKING_SHELL
+	sta MARIO_STATE+S_CHAR_STATE::CUR_STATE
+	rts
+
+set_shell_ud_neutral:
+	lda E_SHELL_STATE_UD::NEUTRAL
+	sta SHELL_UD_STATE
+	rts
+
+set_shell_ud_up:
+	lda E_SHELL_STATE_UD::UP
+	sta SHELL_UD_STATE
+	rts
+
+set_shell_ud_down:
+	lda E_SHELL_STATE_UD::DOWN
+	sta SHELL_UD_STATE
 	rts
 
 check_mario_collide:
 	; this routine should only be called once we're actually at the left of the play area
 	; essentially, if the difference between SHELL_Y_POS and mario's Y pos is <16 then we had a collision
 
+	; first, calculate diff between SHELL_Y_POS and mario's Y pos
+	lda SHELL_Y_POS
+	clc
+	sbc MARIO_STATE+S_CHAR_STATE::Y_POS
 
-	; if no collision, just set the shell's L/R state to right and return
-	; if collided, we set mario's state to kicking and shell's L/R state to R
-	; after that, we figure out if SHELL_Y_POS is above or below mario's Y pos
-	; if above:
-	;	set shell's U/D state to up
-	; if below:
-	; 	set shell's U/D state to down
-	; if same:
-	;	set shell's U/D state to neutral
-	;	
+	; now compare the diff to see if it's <= 16
+	cmp #16
+	bne :+
+; if we get here, it's <= 16, so we set mario's state to kicking first
+	jsr set_mario_kicking
+
+	; let's also set the L/R state here
+	lda E_SHELL_STATE_LR::RIGHT
+	sta SHELL_LR_STATE
+	rts
+
+	; now we need to check if it's above or below mario
+	lda SHELL_Y_POS
+	cmp MARIO_STATE+S_CHAR_STATE::Y_POS
+	beq set_shell_ud_neutral ; set the shell's U/D to neutral
+	bcc set_shell_ud_up      ; set the shell's U/D to up
+	bcs set_shell_ud_down	 ; set the shell's U/D to down
+
+
+
+:	; TODO if we get here reset position, give luigi a point
+
+	lda E_SHELL_STATE_LR::RIGHT
+	sta SHELL_LR_STATE
+
 	rts
 
 update_shell_left:
@@ -439,10 +513,6 @@ update_shell_left:
 
 	jmp check_mario_collide
 
-	; we should now switch to moving right
-;	lda E_SHELL_STATE_LR::RIGHT
-;	sta SHELL_LR_STATE
-;	rts ; and then return
 
 :	; if we get here, we actually move left
 	lda SHELL_X_POS
@@ -472,36 +542,14 @@ update_shell_right:
 
 update_shell_neutral:
 	; we should only be here at the start of the game
-	; basically, we just wait for player 1 to move, and then we use their state (if they're moving up, we're going L/U, otherwise L/D)
+	; basically, we just wait for player 1 to move
 
-	; first, check if they're moving up
-	lda MARIO_STATE+S_CHAR_STATE::CUR_STATE 
-	cmp E_CHAR_ANIM_STATE::MOVING_UP_F1
-	bne :+
-	cmp E_CHAR_ANIM_STATE::MOVING_UP_F2
-	bne :+
-	; if we get here, player 1 is moving up, so let's switch to U/L
-	lda E_SHELL_STATE_LR::LEFT
-	sta SHELL_LR_STATE
-	lda E_SHELL_STATE_UD::UP
-	sta SHELL_UD_STATE
-	rts ; and then return
-
-:	; if we get here, player 1 is not moving up, let's check if they're moving down
-	lda MARIO_STATE+S_CHAR_STATE::CUR_STATE 
-	cmp E_CHAR_ANIM_STATE::MOVING_DOWN_F1
-	bne :+
-	cmp E_CHAR_ANIM_STATE::MOVING_DOWN_F2
-	bne :+
-	; and if we get here, we want to be going D/L
-	lda E_SHELL_STATE_LR::LEFT
-	sta SHELL_LR_STATE
-	lda E_SHELL_STATE_UD::DOWN
-	sta SHELL_UD_STATE
-	rts
+	lda MARIO_STATE+S_CHAR_STATE::CUR_STATE
+	cmp E_CHAR_ANIM_STATE::STANDING_STILL
+	bne update_shell_left
 
 	; if the player is not in any appropriate state, we just return
-:	rts
+	rts
 
 update_shell_lr:
 	lda SHELL_LR_STATE
@@ -552,11 +600,11 @@ update_shell_down:
 update_shell_ud:
 	lda SHELL_UD_STATE
 	cmp E_SHELL_STATE_UD::UP
-	bne :+
+	beq :+
 	jmp update_shell_up
 
 :	cmp E_SHELL_STATE_UD::DOWN
-	bne :+
+	beq :+
 	jmp update_shell_down
 
 :	rts
@@ -584,8 +632,7 @@ update_shell:
 	rts
 
 VBL:
-	jsr update_luigi_anim
-	jsr update_mario_anim
+
 	jsr display_sprites
 	render_sprites
 
