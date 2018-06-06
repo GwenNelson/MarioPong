@@ -76,3 +76,31 @@ VRAM_SPRITES_LOC = $C000
 .macro render_sprites
 	OAM_memcpy shadow_oam
 .endmacro
+
+.macro clear_vram
+  ; set a '0' value in RAM
+  lda #$0000
+  sta $0000
+  ; VRAM destination address $0000
+  sta $2116
+  ; RAM source address $7E:0000
+  sta $4302
+  ; bytes to transfer $10000
+  sta $06a0
+  sep #$20
+  ; VRAM address increment after writing to $2119
+  lda #$80
+  sta $2115
+  ; DMA transfer writes 2 bytes, 1 to $2118 and 1 to $2119, without incrementing RAM address (fixed transfer)
+  lda #$09
+  sta $4300
+  ; PPU destination register $2118
+  lda #$18
+  sta $4301
+  ; RAM source address bank $7E
+  lda #$7E
+  sta $4334
+  ; run the DMA!
+  lda #$01
+  sta $420b
+.endmacro

@@ -59,6 +59,12 @@ SHELL_UD_STATE: .word 0
 MARIO_SCORE:  .word 0
 SCORE_SPRITE: .word 0
 
+; the below is 1 for 1 player, 2 for 2 players
+; the variable is used for both the main menu and ingame
+PLAYER_COUNT: .word 1
+
+MAINMENU_SHELL_Y: .word 45
+
 .segment "CODE"
 
 display_sprites:
@@ -69,6 +75,75 @@ display_sprites:
 	rts
 
 Main:
+	jmp MainMenu
+
+set_1p_mode:
+	lda #1
+	sta PLAYER_COUNT
+	lda MAINMENU_SHELL_1P_Y
+	sta MAINMENU_SHELL_Y
+	rts
+
+set_2p_mode:
+	lda #2
+	sta PLAYER_COUNT
+	lda MAINMENU_SHELL_2P_Y
+	sta MAINMENU_SHELL_Y
+	rts
+
+menu_update_input:
+
+
+	; now check if we're player 1 or 2
+	lda PLAYER_COUNT
+	cmp #1
+	bne :+
+
+	; if we end up here, currently in 1p mode
+	; so if the player hits down, then we need to switch to 2p
+	lda P1_JOY
+	bit #JOY_DOWN
+	bne set_2p_mode
+
+:	; if we end up here, currently in 2p mode
+	; so if the player hits up, then we need to switch to 1p
+	lda P1_JOY
+	bit #JOY_UP
+	bne set_1p_mode
+
+	rts
+
+MainMenu:
+
+	load_spriteset mario_sprites_tiles, mario_sprites_palette ; load mario_sprites
+	load_bg menu01_map, menu01_tiles, menu01_palette ; load main menu
+	setup_screen
+
+	; stupid voodoo hack
+	OAM_init shadow_oam,   0, 0, 1 
+	OAM_init shadow_oam+4, 0, 0, 1
+
+	VBL_set VBL_Menu
+	screen_on
+
+	lda MAINMENU_SHELL_1P_Y
+	sta MAINMENU_SHELL_Y
+
+	lda #1
+	sta PLAYER_COUNT
+
+:	jsr menu_update_input
+	lda P1_JOY
+	bit #JOY_RIGHT
+	bne GameMain
+	sprite_update 00, MAINMENU_SHELL_X, MAINMENU_SHELL_Y, SHELL_SPRITE, 1
+
+	wai
+	jmp :-
+
+GameMain:
+LDA #$C0
+STA $211A
 	; tell controller to latch input
 	lda $4212
 	ora #$01
@@ -79,9 +154,7 @@ Main:
 	load_bg bg01_map, bg01_tiles, bg01_palette    ; load bg01
 
 	setup_screen
-	; stupid voodoo hack
-	OAM_init shadow_oam,   0, 0, 0 
-	OAM_init shadow_oam+4, 0, 0, 1
+
 
 	; setup player states
 	jsr init_players
@@ -103,16 +176,16 @@ Main:
 
 
 
-loop:
+:
 	jsr update_luigi_anim
 	jsr update_mario_anim
 	jsr update_players
 	jsr update_shell
 
-	.repeat 3
+	.repeat 2
 	wai
 	.endrep
-	jmp loop
+	jmp :-
 
 init_shell:
 	; setup initial coordinates of shell
@@ -167,7 +240,7 @@ update_luigi_moving_up:
 	; otherwise, move up 1 pixel and then flip the frame
 	; move up 1 pixel first
 	lda LUIGI_STATE+S_CHAR_STATE::Y_POS
-	sbc #2
+	sbc #3
 	sta LUIGI_STATE+S_CHAR_STATE::Y_POS
 
 	; now the frame flip
@@ -205,7 +278,7 @@ update_luigi_moving_down:
 	; otherwise, move up 1 pixel and then flip the frame
 	; move up 1 pixel first
 	lda LUIGI_STATE+S_CHAR_STATE::Y_POS
-	adc #2
+	adc #3
 	sta LUIGI_STATE+S_CHAR_STATE::Y_POS
 
 	; now the frame flip
@@ -697,6 +770,9 @@ VBL:
 
 	rtl
 
+VBL_Menu:
+	render_sprites
+	rtl
 
 
 .segment "LORAM"
@@ -706,6 +782,16 @@ shadow_oam: .res 512+32
 ; sprite tile ID data, see definition of S_CHAR_SPRITES struct above
 SHELL_SPRITE:
 	.word 40
+
+MAINMENU_SHELL_X:
+	.word 45
+
+; the Y coordinates for the shell cursor on main menu
+MAINMENU_SHELL_1P_Y:
+	.word 160
+
+MAINMENU_SHELL_2P_Y:
+	.word 190
 
 SCORE_SPRITE_START:
 	.word 64
@@ -741,6 +827,11 @@ CHARACTER_START_YPOS: .word 100
 ; starting shell coordinates
 SHELL_START_XPOS: .word 120
 SHELL_START_YPOS: .word 100
+
+; the main menu background
+incbin menu01_palette, "data/menu01.png.palette"
+incbin menu01_tiles,   "data/menu01.png.tiles.lz4"
+incbin menu01_map,     "data/menu01.png.map.lz4"
 
 ; the background image
 incbin bg01_palette, "data/bg01.png.palette"
