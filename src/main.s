@@ -142,8 +142,6 @@ MainMenu:
 	jmp :-
 
 GameMain:
-LDA #$C0
-STA $211A
 	; tell controller to latch input
 	lda $4212
 	ora #$01
